@@ -3,8 +3,6 @@ use reqwest::Url;
 use serde_derive::{Deserialize, Serialize};
 use structopt::StructOpt;
 
-use crate::API_KEY;
-
 #[derive(Debug, Deserialize, Serialize)]
 pub enum Temperatures {
     Kelvin,
@@ -97,11 +95,11 @@ pub struct Sys {
 
 impl Forecast {
     pub async fn get(city: &String, country_code: &String) -> Result<Self, ExitFailure> {
+        let api_key = std::env::var("OPENWEATHER_API_KEY")?;
         let url = format!(
             "https://api.openweathermap.org/data/2.5/weather?q={},{}&appid={}",
-            city, country_code, API_KEY
+            city, country_code, api_key
         );
-        dbg!(&url);
         let url = Url::parse(&*url)?;
         let resp = reqwest::get(url).await?.json::<Forecast>().await?;
         Ok(resp)
