@@ -30,7 +30,7 @@ pub struct CLI {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Forecast {
     pub coord: Coord,
-    pub weather: Weather,
+    pub weather: Vec<Details>,
     pub base: String,
     pub main: Temps,
     pub visibility: i32,
@@ -48,11 +48,6 @@ pub struct Forecast {
 pub struct Coord {
     pub lon: f32,
     pub lat: f32,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct Weather {
-    pub details: Details,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -103,5 +98,23 @@ impl Forecast {
         let url = Url::parse(&*url)?;
         let resp = reqwest::get(url).await?.json::<Forecast>().await?;
         Ok(resp)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn accepts_weather_details_array() {
+        let response = serde_json::json!({
+            "coord":{"lon":1.0,"lat":2.0},
+            "weather":[{"id":800,"main":"Clear","description":"clear sky","icon":"01d"}, {"id":701,"main":"Mist","description":"mist","icon":"50d"}],
+            "base":"stations","main":{"temp":280.0,"feels_like":279.0,"temp_min":278.0,
+            "temp_max":282.0,"pressure":1000,"humidity":50},
+            "visibility":10000,"wind":{"speed":2.0,"deg":90},"clouds":{"all":0},
+            "dt":1683000000,"sys":{"type":1,"id":1,"country":"GB","sunrise":1683000000,
+            "sunset":1683040000},"timezone":0,"id":1,"name":"London","cod":200
+        });
+        assert!(serde_json::from_value::<Forecast>(response).is_ok());
     }
 }
