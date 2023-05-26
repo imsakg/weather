@@ -3,11 +3,13 @@ name = "weather"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+description = "Current weather, forecasts and history from the terminal"
+license = "MIT"
+repository = "https://github.com/imsakg/weather"
 
 [dependencies]
 exitfailure = "0.5.1"
-reqwest = {version = "0.11.14", features=["json"]}
+reqwest = { version = "0.11.14", features = ["json"] }
 serde = "1.0.156"
 serde_derive = "1.0.156"
 serde_json = "1.0.94"
@@ -22,4 +24,3 @@ debug-assertions = false
 codegen-units = 1
 panic = 'abort'
 overflow-checks = true
-
