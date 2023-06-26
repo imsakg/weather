@@ -1,3 +1,4 @@
 //! A small, testable weather client. Networking is separate from presentation.
 pub mod units;
 pub type Result<T> = std::result::Result<T, String>;
+pub mod location;
