@@ -4,6 +4,7 @@ use serde_derive::{Deserialize, Serialize};
 pub struct WeatherData {
     pub timezone: String,
     pub current: Option<Current>,
+    pub daily: Option<Daily>,
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Current {
@@ -35,5 +36,45 @@ mod tests {
         assert_eq!(current.relative_humidity_2m, None);
         assert_eq!(condition(current.weather_code), "Clear sky");
         assert_eq!(condition(Some(999)), "Unknown");
+    }
+}
+
+#[cfg(test)]
+mod daily_tests {
+    use super::*;
+    fn daily() -> Daily {
+        serde_json::from_str(r#"{"time":["2023-07-01"],"temperature_2m_max":[25.0],"temperature_2m_min":[null],"precipitation_sum":[2.1],"weather_code":[61]}"#).unwrap()
+    }
+    #[test]
+    fn daily_columns_become_rows_without_inventing_temperatures() {
+        let rows = daily().rows().unwrap();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].low, None);
+        assert_eq!(rows[0].rain, Some(2.1));
+    }
+    #[test]
+    fn rejects_ragged_daily_arrays() {
+        let mut input = daily(); input.temperature_2m_max.clear();
+        assert!(input.rows().is_err());
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Daily {
+    pub time: Vec<String>,
+    pub temperature_2m_max: Vec<Option<f64>>,
+    pub temperature_2m_min: Vec<Option<f64>>,
+    pub precipitation_sum: Vec<Option<f64>>,
+    pub weather_code: Vec<Option<u16>>,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Day { pub date: String, pub high: Option<f64>, pub low: Option<f64>, pub rain: Option<f64>, pub code: Option<u16> }
+impl Daily {
+    pub fn rows(&self) -> crate::Result<Vec<Day>> {
+        let len = self.time.len();
+        if [self.temperature_2m_max.len(), self.temperature_2m_min.len(), self.precipitation_sum.len(), self.weather_code.len()].iter().any(|&n| n != len) {
+            return Err("provider returned mismatched daily arrays".into());
+        }
+        Ok((0..len).map(|i| Day { date: self.time[i].clone(), high: self.temperature_2m_max[i], low: self.temperature_2m_min[i], rain: self.precipitation_sum[i], code: self.weather_code[i] }).collect())
     }
 }
