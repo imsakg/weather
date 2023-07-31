@@ -4,3 +4,4 @@ pub type Result<T> = std::result::Result<T, String>;
 pub mod location;
 pub mod model;
 pub mod http;
+pub mod geocoding;
