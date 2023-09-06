@@ -6,3 +6,4 @@ pub mod model;
 pub mod http;
 pub mod geocoding;
 pub mod api;
+pub mod display;
