@@ -27,3 +27,26 @@ mod tests {
         assert!(text.contains("UTC"));
     }
 }
+
+#[cfg(test)]
+mod daily_display_tests {
+    use super::*;
+    #[test]
+    fn daily_table_has_dates_highs_lows_and_rain_units() {
+        let days = vec![crate::model::Day { date: "2023-09-01".into(), high: Some(22.0), low: None, rain: Some(1.2), code: Some(61) }];
+        let table = daily(&days, Units::Imperial);
+        assert!(table.contains("2023-09-01"));
+        assert!(table.contains("High °F"));
+        assert!(table.contains("Rain in"));
+        assert!(table.contains("22.0"));
+        assert!(table.contains("—"));
+    }
+}
+
+pub fn daily(days: &[crate::model::Day], units: Units) -> String {
+    let mut out = format!("\n{:<12} {:>9} {:>9} {:>10}  Conditions\n", "Date", format!("High {}", units.temperature_label()), format!("Low {}", units.temperature_label()), format!("Rain {}", units.precipitation_label()));
+    for day in days {
+        out.push_str(&format!("{:<12} {:>9} {:>9} {:>10}  {}\n", day.date, number(day.high), number(day.low), number(day.rain), condition(day.code)));
+    }
+    out
+}
