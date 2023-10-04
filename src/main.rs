@@ -11,7 +11,11 @@ async fn main() {
 async fn run(args: Options) -> Result<()> {
     args.validate()?;
     let http = Http::new()?;
-    let location = geocoding::resolve(&http, args.city.as_deref().unwrap_or_default(), args.country_code.as_deref()).await?;
+    let location = if let Some(coordinates) = args.coordinates()? {
+        weather::location::Location::at(coordinates)
+    } else {
+        geocoding::resolve(&http, args.city.as_deref().unwrap_or_default(), args.country_code.as_deref()).await?
+    };
     let data = api::forecast(&http, location.coordinates, args.units, args.days).await?;
     print!("{}", display::current(&location, &data, args.units));
     if let Some(daily) = &data.daily { print!("{}", display::daily(&daily.rows()?, args.units)); }

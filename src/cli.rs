@@ -14,6 +14,12 @@ pub struct Options {
     /// metric or imperial
     #[structopt(long, default_value = "metric")]
     pub units: Units,
+    /// Latitude for an exact location (no geocoding)
+    #[structopt(long, alias = "lat", requires = "longitude", conflicts_with = "city", allow_hyphen_values = true)]
+    pub latitude: Option<f64>,
+    /// Longitude for an exact location
+    #[structopt(long, alias = "lon", requires = "latitude", conflicts_with = "city", allow_hyphen_values = true)]
+    pub longitude: Option<f64>,
 }
 fn parse_days(value: &str) -> Result<u8> {
     let days = value.parse::<u8>().map_err(|_| "days must be an integer from 1 to 16")?;
@@ -21,7 +27,15 @@ fn parse_days(value: &str) -> Result<u8> {
     Ok(days)
 }
 impl Options {
+    pub fn coordinates(&self) -> Result<Option<crate::location::Coordinates>> {
+        match (self.latitude, self.longitude) {
+            (Some(lat), Some(lon)) => crate::location::Coordinates::new(lat, lon).map(Some),
+            (None, None) => Ok(None),
+            _ => Err("provide both latitude and longitude".into()),
+        }
+    }
     pub fn validate(&self) -> Result<()> {
+        if self.coordinates()?.is_some() { return Ok(()); }
         let city = self.city.as_deref().ok_or("provide a city; see weather --help")?;
         crate::geocoding::search_url(city, self.country_code.as_deref())?;
         Ok(())
@@ -44,5 +58,23 @@ mod tests {
     fn invalid_ranges_and_missing_location_fail_before_network() {
         assert!(Options::from_iter_safe(["weather", "London", "--days", "17"]).is_err());
         assert!(Options::from_iter_safe(["weather"]).unwrap().validate().is_err());
+    }
+}
+
+#[cfg(test)]
+mod coordinate_tests {
+    use super::*;
+    #[test]
+    fn signed_coordinates_work_without_geocoding() {
+        let args = Options::from_iter_safe(["weather", "--latitude", "-33.86", "--longitude", "151.2"]).unwrap();
+        assert!(args.validate().is_ok());
+        assert_eq!(args.coordinates().unwrap().unwrap().latitude(), -33.86);
+    }
+    #[test]
+    fn incomplete_or_conflicting_location_is_rejected() {
+        assert!(Options::from_iter_safe(["weather", "--latitude", "2"]).is_err());
+        assert!(Options::from_iter_safe(["weather", "London", "--latitude", "2", "--longitude", "3"]).is_err());
+        let args = Options::from_iter_safe(["weather", "--latitude", "200", "--longitude", "0"]).unwrap();
+        assert!(args.validate().is_err());
     }
 }
