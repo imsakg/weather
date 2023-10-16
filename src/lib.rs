@@ -8,3 +8,4 @@ pub mod geocoding;
 pub mod api;
 pub mod display;
 pub mod cli;
+pub mod detection;

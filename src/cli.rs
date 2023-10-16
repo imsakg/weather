@@ -20,6 +20,9 @@ pub struct Options {
     /// Longitude for an exact location
     #[structopt(long, alias = "lon", requires = "latitude", conflicts_with = "city", allow_hyphen_values = true)]
     pub longitude: Option<f64>,
+    /// Opt in to approximate public-IP location via ipapi.co
+    #[structopt(long, conflicts_with_all = &["city", "latitude", "longitude"])]
+    pub locate: bool,
 }
 fn parse_days(value: &str) -> Result<u8> {
     let days = value.parse::<u8>().map_err(|_| "days must be an integer from 1 to 16")?;
@@ -35,7 +38,7 @@ impl Options {
         }
     }
     pub fn validate(&self) -> Result<()> {
-        if self.coordinates()?.is_some() { return Ok(()); }
+        if self.coordinates()?.is_some() || self.locate { return Ok(()); }
         let city = self.city.as_deref().ok_or("provide a city; see weather --help")?;
         crate::geocoding::search_url(city, self.country_code.as_deref())?;
         Ok(())
