@@ -36,3 +36,30 @@ mod tests {
         assert!(forecast_url(Coordinates::new(0.0,0.0).unwrap(), Units::Metric, 17).is_err());
     }
 }
+
+#[cfg(test)]
+mod archive_tests {
+    use super::*;
+    #[test]
+    fn archive_query_uses_the_archive_endpoint_and_explicit_dates() {
+        let range = crate::history::HistoryRange::new("2023-01-01","2023-01-05", chrono::NaiveDate::from_ymd_opt(2024,1,1).unwrap()).unwrap();
+        let url = archive_url(Coordinates::new(41.0,29.0).unwrap(), Units::Metric, range).unwrap();
+        assert_eq!(url.host_str(), Some("archive-api.open-meteo.com"));
+        let query: std::collections::HashMap<_,_> = url.query_pairs().into_owned().collect();
+        assert_eq!(query["start_date"], "2023-01-01");
+        assert_eq!(query["end_date"], "2023-01-05");
+        assert!(!query.contains_key("current"));
+    }
+}
+
+pub fn archive_url(coordinates: Coordinates, units: Units, range: crate::history::HistoryRange) -> Result<Url> {
+    let mut url = Url::parse("https://archive-api.open-meteo.com/v1/archive").map_err(|e| e.to_string())?;
+    add_common(&mut url, coordinates, units);
+    url.query_pairs_mut().append_pair("daily", DAILY_FIELDS).append_pair("start_date", &range.start.to_string()).append_pair("end_date", &range.end.to_string());
+    Ok(url)
+}
+pub async fn archive(http: &Http, coordinates: Coordinates, units: Units, range: crate::history::HistoryRange) -> Result<WeatherData> {
+    let data: WeatherData = http.get_json(archive_url(coordinates, units, range)?).await?;
+    data.daily.as_ref().ok_or("provider returned no archive data")?.rows()?;
+    Ok(data)
+}

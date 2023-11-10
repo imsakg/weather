@@ -23,6 +23,12 @@ pub struct Options {
     /// Opt in to approximate public-IP location via ipapi.co
     #[structopt(long, conflicts_with_all = &["city", "latitude", "longitude"])]
     pub locate: bool,
+    /// First historical date, YYYY-MM-DD (at most 366 days)
+    #[structopt(long, requires = "end")]
+    pub start: Option<String>,
+    /// Last historical date, inclusive (archive can lag several days)
+    #[structopt(long, requires = "start")]
+    pub end: Option<String>,
 }
 fn parse_days(value: &str) -> Result<u8> {
     let days = value.parse::<u8>().map_err(|_| "days must be an integer from 1 to 16")?;
@@ -37,7 +43,15 @@ impl Options {
             _ => Err("provide both latitude and longitude".into()),
         }
     }
+    pub fn history_range(&self) -> Result<Option<crate::history::HistoryRange>> {
+        match (&self.start, &self.end) {
+            (Some(start),Some(end)) => crate::history::HistoryRange::new(start, end, chrono::Utc::now().date_naive()).map(Some),
+            (None,None) => Ok(None),
+            _ => Err("provide both --start and --end".into()),
+        }
+    }
     pub fn validate(&self) -> Result<()> {
+        self.history_range()?;
         if self.coordinates()?.is_some() || self.locate { return Ok(()); }
         let city = self.city.as_deref().ok_or("provide a city; see weather --help")?;
         crate::geocoding::search_url(city, self.country_code.as_deref())?;
