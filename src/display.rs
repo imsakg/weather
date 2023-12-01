@@ -50,3 +50,24 @@ pub fn daily(days: &[crate::model::Day], units: Units) -> String {
     }
     out
 }
+
+#[cfg(test)]
+mod history_display_tests {
+    use super::*;
+    #[test]
+    fn archive_output_is_not_mislabelled_as_a_current_observation() {
+        let data: WeatherData = serde_json::from_str(r#"{"timezone":"UTC","daily":{"time":["2023-01-01"],"temperature_2m_max":[10.0],"temperature_2m_min":[2.0],"precipitation_sum":[null],"weather_code":[3]}}"#).unwrap();
+        let location = Location::at(crate::location::Coordinates::new(0.0,0.0).unwrap());
+        let output = history(&location, &data, Units::Metric).unwrap();
+        assert!(output.contains("Historical weather"));
+        assert!(output.contains("reanalysis"));
+        assert!(!output.contains("Current observations"));
+        assert!(output.contains("2023-01-01"));
+    }
+}
+
+pub fn history(location: &Location, data: &WeatherData, units: Units) -> crate::Result<String> {
+    let days = data.daily.as_ref().ok_or("archive response is missing daily data")?.rows()?;
+    if days.is_empty() { return Err("archive returned no days".into()); }
+    Ok(format!("Historical weather · {} · {}\nOpen-Meteo reanalysis estimates; recent dates may be incomplete.\n{}", location.name, data.timezone, daily(&days, units)))
+}

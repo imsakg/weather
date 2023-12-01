@@ -22,7 +22,10 @@ async fn run(args: Options) -> Result<()> {
     let data = if let Some(range) = args.history_range()? {
         api::archive(&http, location.coordinates, args.units, range).await?
     } else { api::forecast(&http, location.coordinates, args.units, args.days).await? };
-    print!("{}", display::current(&location, &data, args.units));
-    if let Some(daily) = &data.daily { print!("{}", display::daily(&daily.rows()?, args.units)); }
+    if args.start.is_some() { print!("{}", display::history(&location, &data, args.units)?); }
+    else {
+        print!("{}", display::current(&location, &data, args.units));
+        if let Some(daily) = &data.daily { print!("{}", display::daily(&daily.rows()?, args.units)); }
+    }
     Ok(())
 }
