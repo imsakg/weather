@@ -29,6 +29,9 @@ pub struct Options {
     /// Last historical date, inclusive (archive can lag several days)
     #[structopt(long, requires = "start")]
     pub end: Option<String>,
+    /// Add terminal temperature and precipitation charts
+    #[structopt(long)]
+    pub chart: bool,
 }
 fn parse_days(value: &str) -> Result<u8> {
     let days = value.parse::<u8>().map_err(|_| "days must be an integer from 1 to 16")?;
