@@ -41,3 +41,36 @@ mod tests {
         assert_eq!(sparkline(&values, 9999).chars().count(), 120);
     }
 }
+
+#[cfg(test)]
+mod rain_tests {
+    use super::*;
+    #[test]
+    fn rain_bars_scale_to_width_and_do_not_turn_missing_into_zero() {
+        let days = vec![
+            Day {date:"2023-12-01".into(), high:None,low:None,rain:Some(10.0),code:None},
+            Day {date:"2023-12-02".into(), high:None,low:None,rain:None,code:None},
+            Day {date:"2023-12-03".into(), high:None,low:None,rain:Some(0.0),code:None},
+        ];
+        let chart = rainfall(&days, Units::Metric, 10);
+        assert!(chart.contains("##########"));
+        assert!(chart.contains("10.0 mm"));
+        assert!(chart.contains("missing"));
+        assert_eq!(chart.matches('#').count(), 10);
+    }
+}
+
+pub fn rainfall(days: &[Day], units: Units, width: usize) -> String {
+    let width = width.min(80);
+    let max = days.iter().filter_map(|d| d.rain).filter(|n| n.is_finite() && *n >= 0.0).fold(0.0, f64::max);
+    let mut out = format!("\nDaily precipitation ({}) · bars scaled to this period\n", units.precipitation_label());
+    for day in days {
+        let rain = day.rain.filter(|n| n.is_finite() && *n >= 0.0);
+        let bar = match rain {
+            None => "missing".into(),
+            Some(value) => "#".repeat(if max > 0.0 { (value / max * width as f64).round() as usize } else { 0 }),
+        };
+        out.push_str(&format!("{} {:>6} {} | {}\n", day.date, number(rain), units.precipitation_label(), bar));
+    }
+    out
+}

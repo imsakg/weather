@@ -28,7 +28,10 @@ async fn run(args: Options) -> Result<()> {
         if let Some(daily) = &data.daily { print!("{}", display::daily(&daily.rows()?, args.units)); }
     }
     if args.chart {
-        if let Some(daily) = &data.daily { print!("{}", weather::chart::temperature(&daily.rows()?, args.units)); }
+        if let Some(daily) = &data.daily {
+            let days = daily.rows()?;
+            print!("{}{}", weather::chart::temperature(&days, args.units), weather::chart::rainfall(&days, args.units, 32));
+        }
     }
     Ok(())
 }
