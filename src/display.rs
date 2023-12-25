@@ -71,3 +71,13 @@ pub fn history(location: &Location, data: &WeatherData, units: Units) -> crate::
     if days.is_empty() { return Err("archive returned no days".into()); }
     Ok(format!("Historical weather · {} · {}\nOpen-Meteo reanalysis estimates; recent dates may be incomplete.\n{}", location.name, data.timezone, daily(&days, units)))
 }
+
+pub fn hourly(data: &WeatherData, units: Units, limit: u8) -> crate::Result<String> {
+    let rows = data.hourly.as_ref().ok_or("provider returned no hourly forecast")?.rows()?;
+    let now = data.current.as_ref().map(|c| c.time.as_str()).unwrap_or("");
+    let mut out = format!("\nUpcoming hours · {}\n{:<18} {:>10} {:>12}\n", data.timezone, "Local time", units.temperature_label(), "Rain chance");
+    for hour in rows.iter().filter(|r| r.time.as_str() >= now).take(usize::from(limit.min(48))) {
+        out.push_str(&format!("{:<18} {:>10} {:>10} %\n", hour.time, number(hour.temperature), number(hour.rain_probability)));
+    }
+    Ok(out)
+}

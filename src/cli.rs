@@ -32,6 +32,9 @@ pub struct Options {
     /// Add terminal temperature and precipitation charts
     #[structopt(long)]
     pub chart: bool,
+    /// Show the next 1..48 available hourly points; 0 hides them
+    #[structopt(long, default_value = "0", parse(try_from_str = parse_hours))]
+    pub hourly: u8,
 }
 fn parse_days(value: &str) -> Result<u8> {
     let days = value.parse::<u8>().map_err(|_| "days must be an integer from 1 to 16")?;
@@ -55,6 +58,7 @@ impl Options {
     }
     pub fn validate(&self) -> Result<()> {
         self.history_range()?;
+        if self.start.is_some() && self.hourly > 0 { return Err("hourly display is not available for archive requests".into()); }
         if self.coordinates()?.is_some() || self.locate { return Ok(()); }
         let city = self.city.as_deref().ok_or("provide a city; see weather --help")?;
         crate::geocoding::search_url(city, self.country_code.as_deref())?;
@@ -97,4 +101,8 @@ mod coordinate_tests {
         let args = Options::from_iter_safe(["weather", "--latitude", "200", "--longitude", "0"]).unwrap();
         assert!(args.validate().is_err());
     }
+}
+
+fn parse_hours(value: &str) -> Result<u8> {
+    value.parse::<u8>().ok().filter(|n| *n <= 48).ok_or_else(|| "hourly must be an integer from 0 to 48".into())
 }

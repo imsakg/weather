@@ -5,6 +5,7 @@ pub struct WeatherData {
     pub timezone: String,
     pub current: Option<Current>,
     pub daily: Option<Daily>,
+    pub hourly: Option<Hourly>,
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Current {
@@ -76,5 +77,33 @@ impl Daily {
             return Err("provider returned mismatched daily arrays".into());
         }
         Ok((0..len).map(|i| Day { date: self.time[i].clone(), high: self.temperature_2m_max[i], low: self.temperature_2m_min[i], rain: self.precipitation_sum[i], code: self.weather_code[i] }).collect())
+    }
+}
+
+#[cfg(test)]
+mod hourly_tests {
+    use super::*;
+    #[test]
+    fn hourly_rows_preserve_time_and_probability() {
+        let hourly: Hourly = serde_json::from_str(r#"{"time":["2023-12-01T18:00"],"temperature_2m":[null],"precipitation_probability":[75.0]}"#).unwrap();
+        let rows = hourly.rows().unwrap();
+        assert_eq!(rows[0].temperature, None);
+        assert_eq!(rows[0].rain_probability, Some(75.0));
+    }
+    #[test]
+    fn hourly_misalignment_is_rejected() {
+        let hourly: Hourly = serde_json::from_str(r#"{"time":["2023-12-01T18:00"],"temperature_2m":[],"precipitation_probability":[75.0]}"#).unwrap();
+        assert!(hourly.rows().is_err());
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Hourly { pub time: Vec<String>, pub temperature_2m: Vec<Option<f64>>, pub precipitation_probability: Vec<Option<f64>> }
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Hour { pub time: String, pub temperature: Option<f64>, pub rain_probability: Option<f64> }
+impl Hourly {
+    pub fn rows(&self) -> crate::Result<Vec<Hour>> {
+        if self.time.len() != self.temperature_2m.len() || self.time.len() != self.precipitation_probability.len() { return Err("provider returned mismatched hourly arrays".into()); }
+        Ok((0..self.time.len()).map(|i| Hour { time:self.time[i].clone(), temperature:self.temperature_2m[i], rain_probability:self.precipitation_probability[i] }).collect())
     }
 }

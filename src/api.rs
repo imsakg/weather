@@ -7,7 +7,8 @@ pub fn forecast_url(coordinates: Coordinates, units: Units, days: u8) -> Result<
     let mut url = Url::parse("https://api.open-meteo.com/v1/forecast").map_err(|e| e.to_string())?;
     add_common(&mut url, coordinates, units);
     url.query_pairs_mut().append_pair("current", "temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m")
-        .append_pair("daily", DAILY_FIELDS).append_pair("forecast_days", &days.to_string());
+        .append_pair("daily", DAILY_FIELDS).append_pair("forecast_days", &days.to_string())
+        .append_pair("hourly", "temperature_2m,precipitation_probability");
     Ok(url)
 }
 pub fn add_common(url: &mut Url, coordinates: Coordinates, units: Units) {
