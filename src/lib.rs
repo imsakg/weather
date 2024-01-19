@@ -11,3 +11,4 @@ pub mod cli;
 pub mod detection;
 pub mod history;
 pub mod chart;
+pub mod report;

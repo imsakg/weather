@@ -35,6 +35,9 @@ pub struct Options {
     /// Show the next 1..48 available hourly points; 0 hides them
     #[structopt(long, default_value = "0", parse(try_from_str = parse_hours))]
     pub hourly: u8,
+    /// Emit a versioned JSON report on stdout
+    #[structopt(long, conflicts_with = "chart")]
+    pub json: bool,
 }
 fn parse_days(value: &str) -> Result<u8> {
     let days = value.parse::<u8>().map_err(|_| "days must be an integer from 1 to 16")?;
