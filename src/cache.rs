@@ -58,3 +58,40 @@ mod tests {
         assert!(cache.load("a").is_err());
     }
 }
+
+#[cfg(test)]
+mod freshness_tests {
+    use super::*;
+    fn seed(cache: &Cache) {
+        let report = Report::new(crate::location::Location::at(crate::location::Coordinates::new(1.0,2.0).unwrap()), crate::units::Units::Metric, crate::report::ReportKind::Forecast, serde_json::from_str(r#"{"timezone":"UTC"}"#).unwrap());
+        cache.store("a", 1000, &report).unwrap();
+    }
+    #[test]
+    fn expired_records_are_only_usable_when_explicitly_offline() {
+        let dir = tempfile::tempdir().unwrap(); let cache = Cache::new(dir.path().to_path_buf()); seed(&cache);
+        assert!(!cache.lookup("a", 1100, 900, false).unwrap().unwrap().stale);
+        assert!(cache.lookup("a", 2000, 900, false).unwrap().is_none());
+        let hit = cache.lookup("a", 2000, 900, true).unwrap().unwrap();
+        assert!(hit.stale); assert_eq!(hit.age_seconds, 1000);
+    }
+    #[test]
+    fn future_timestamps_and_offline_cache_misses_are_errors() {
+        let dir = tempfile::tempdir().unwrap(); let cache = Cache::new(dir.path().to_path_buf()); seed(&cache);
+        assert!(cache.lookup("a", 999, 900, true).is_err());
+        assert!(cache.lookup("missing", 2000, 900, true).is_err());
+    }
+}
+
+pub struct CacheHit { pub report: Report, pub stale: bool, pub age_seconds: u64 }
+impl Cache {
+    pub fn lookup(&self, key: &str, now: u64, ttl: u64, offline: bool) -> Result<Option<CacheHit>> {
+        let Some(entry) = self.load(key)? else {
+            if offline { return Err("no cached weather for this request; fetch once while online".into()); }
+            return Ok(None);
+        };
+        let age_seconds = now.checked_sub(entry.fetched_at).ok_or("cache timestamp is in the future")?;
+        let stale = age_seconds > ttl;
+        if stale && !offline { return Ok(None); }
+        Ok(Some(CacheHit { report: entry.report, stale, age_seconds }))
+    }
+}
