@@ -13,3 +13,4 @@ pub mod history;
 pub mod chart;
 pub mod report;
 pub mod cache;
+pub mod app;

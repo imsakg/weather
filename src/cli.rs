@@ -38,6 +38,18 @@ pub struct Options {
     /// Emit a versioned JSON report on stdout
     #[structopt(long, conflicts_with = "chart")]
     pub json: bool,
+    /// Opt-in local cache directory (stores location and weather)
+    #[structopt(long, parse(from_os_str))]
+    pub cache_dir: Option<std::path::PathBuf>,
+    /// Never use the network; allow explicitly stale cached weather
+    #[structopt(long, requires = "cache-dir", conflicts_with = "refresh")]
+    pub offline: bool,
+    /// Bypass the cache and fetch a fresh response
+    #[structopt(long, requires = "cache-dir")]
+    pub refresh: bool,
+    /// Cache freshness in seconds (at most 86400)
+    #[structopt(long, default_value = "900")]
+    pub cache_ttl: u64,
 }
 fn parse_days(value: &str) -> Result<u8> {
     let days = value.parse::<u8>().map_err(|_| "days must be an integer from 1 to 16")?;
@@ -59,7 +71,12 @@ impl Options {
             _ => Err("provide both --start and --end".into()),
         }
     }
+    pub fn request_key(&self) -> String {
+        serde_json::json!({"version":1,"city":self.city.as_deref().map(str::trim), "country":self.country_code.as_deref().map(str::to_ascii_uppercase),
+            "latitude":self.latitude,"longitude":self.longitude,"locate":self.locate,"units":self.units,"days":self.days,"start":self.start,"end":self.end}).to_string()
+    }
     pub fn validate(&self) -> Result<()> {
+        if self.cache_ttl > 86400 { return Err("cache TTL must not exceed 86400 seconds".into()); }
         self.history_range()?;
         if self.start.is_some() && self.hourly > 0 { return Err("hourly display is not available for archive requests".into()); }
         if self.coordinates()?.is_some() || self.locate { return Ok(()); }
@@ -108,4 +125,22 @@ mod coordinate_tests {
 
 fn parse_hours(value: &str) -> Result<u8> {
     value.parse::<u8>().ok().filter(|n| *n <= 48).ok_or_else(|| "hourly must be an integer from 0 to 48".into())
+}
+
+#[cfg(test)]
+mod cache_cli_tests {
+    use super::*;
+    #[test]
+    fn offline_requires_an_explicit_cache_and_cannot_refresh() {
+        assert!(Options::from_iter_safe(["weather", "London", "--offline"]).is_err());
+        assert!(Options::from_iter_safe(["weather", "London", "--cache-dir", "cache", "--offline", "--refresh"]).is_err());
+    }
+    #[test]
+    fn request_keys_separate_units_and_forecast_lengths() {
+        let one = Options::from_iter_safe(["weather", "London"]).unwrap();
+        let two = Options::from_iter_safe(["weather", "London", "--units", "imperial"]).unwrap();
+        assert_ne!(one.request_key(), two.request_key());
+        let three = Options::from_iter_safe(["weather", "London", "--days", "3"]).unwrap();
+        assert_ne!(one.request_key(), three.request_key());
+    }
 }
