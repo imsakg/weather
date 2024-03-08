@@ -50,6 +50,9 @@ pub struct Options {
     /// Cache freshness in seconds (at most 86400)
     #[structopt(long, default_value = "900")]
     pub cache_ttl: u64,
+    /// Read a saved location JSON file; explicit locations take precedence
+    #[structopt(long, parse(from_os_str))]
+    pub config: Option<std::path::PathBuf>,
 }
 fn parse_days(value: &str) -> Result<u8> {
     let days = value.parse::<u8>().map_err(|_| "days must be an integer from 1 to 16")?;

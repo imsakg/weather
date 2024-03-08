@@ -8,7 +8,8 @@ async fn main() {
         std::process::exit(1);
     }
 }
-async fn run(args: Options) -> Result<()> {
+async fn run(mut args: Options) -> Result<()> {
+    if let Some(path) = &args.config { weather::config::SavedLocation::read(path)?.apply(&mut args)?; }
     let report = weather::app::load(&args).await?;
     let location = &report.location;
     let data = &report.data;
