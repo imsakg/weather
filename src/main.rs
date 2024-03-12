@@ -19,6 +19,7 @@ async fn run(mut args: Options) -> Result<()> {
         print!("{}", display::current(&location, &data, args.units));
         if let Some(daily) = &data.daily { print!("{}", display::daily(&daily.rows()?, args.units)); }
     }
+    if let Some(daily) = &data.daily { print!("{}", weather::summary::summarize(&daily.rows()?).render(args.units)); }
     if args.hourly > 0 { print!("{}", display::hourly(&data, args.units, args.hourly)?); }
     if args.chart {
         if let Some(daily) = &data.daily {

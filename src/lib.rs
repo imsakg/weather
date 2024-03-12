@@ -15,3 +15,4 @@ pub mod report;
 pub mod cache;
 pub mod app;
 pub mod config;
+pub mod summary;
