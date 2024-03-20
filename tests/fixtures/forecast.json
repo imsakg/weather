@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "kind": "forecast",
+  "units": "metric",
+  "location": {
+    "name": "Istanbul",
+    "country": "TR",
+    "coordinates": {
+      "latitude": 41.0,
+      "longitude": 29.0
+    }
+  },
+  "data": {
+    "timezone": "Europe/Istanbul",
+    "current": {
+      "time": "2024-03-01T18:00",
+      "temperature_2m": 12.5,
+      "apparent_temperature": 11.0,
+      "relative_humidity_2m": 65.0,
+      "weather_code": 2,
+      "wind_speed_10m": 8.0
+    },
+    "daily": {
+      "time": [
+        "2024-03-01",
+        "2024-03-02",
+        "2024-03-03"
+      ],
+      "temperature_2m_max": [
+        15.0,
+        16.0,
+        14.0
+      ],
+      "temperature_2m_min": [
+        8.0,
+        9.0,
+        null
+      ],
+      "precipitation_sum": [
+        0.0,
+        2.0,
+        null
+      ],
+      "weather_code": [
+        2,
+        61,
+        null
+      ]
+    },
+    "hourly": {
+      "time": [
+        "2024-03-01T17:00",
+        "2024-03-01T18:00",
+        "2024-03-01T19:00",
+        "2024-03-01T20:00"
+      ],
+      "temperature_2m": [
+        13.0,
+        12.5,
+        12.0,
+        null
+      ],
+      "precipitation_probability": [
+        0.0,
+        10.0,
+        25.0,
+        null
+      ]
+    }
+  }
+}

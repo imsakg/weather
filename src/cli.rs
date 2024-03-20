@@ -53,6 +53,9 @@ pub struct Options {
     /// Read a saved location JSON file; explicit locations take precedence
     #[structopt(long, parse(from_os_str))]
     pub config: Option<std::path::PathBuf>,
+    /// Replay a versioned JSON report without network access
+    #[structopt(long, parse(from_os_str), conflicts_with_all = &["city", "latitude", "longitude", "locate", "config", "cache-dir", "units", "days", "start", "end"])]
+    pub input: Option<std::path::PathBuf>,
 }
 fn parse_days(value: &str) -> Result<u8> {
     let days = value.parse::<u8>().map_err(|_| "days must be an integer from 1 to 16")?;
@@ -80,6 +83,7 @@ impl Options {
     }
     pub fn validate(&self) -> Result<()> {
         if self.cache_ttl > 86400 { return Err("cache TTL must not exceed 86400 seconds".into()); }
+        if self.input.is_some() { return Ok(()); }
         self.history_range()?;
         if self.start.is_some() && self.hourly > 0 { return Err("hourly display is not available for archive requests".into()); }
         if self.coordinates()?.is_some() || self.locate { return Ok(()); }

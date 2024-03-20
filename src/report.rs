@@ -28,3 +28,18 @@ mod tests {
         assert!(value["data"]["current"].is_null());
     }
 }
+
+impl Report {
+    pub fn read(path: &std::path::Path) -> Result<Self> {
+        use std::io::Read;
+        let file = std::fs::File::open(path).map_err(|e| format!("cannot open report: {e}"))?;
+        let mut bytes = Vec::new();
+        file.take(crate::http::MAX_RESPONSE_BYTES as u64 + 1).read_to_end(&mut bytes).map_err(|e| format!("cannot read report: {e}"))?;
+        if bytes.len() > crate::http::MAX_RESPONSE_BYTES { return Err("input report is too large".into()); }
+        let report: Self = serde_json::from_slice(&bytes).map_err(|e| format!("invalid input report: {e}"))?;
+        if report.schema_version != 1 { return Err("unsupported report schema version".into()); }
+        if let Some(daily) = &report.data.daily { daily.rows()?; }
+        if let Some(hourly) = &report.data.hourly { hourly.rows()?; }
+        Ok(report)
+    }
+}

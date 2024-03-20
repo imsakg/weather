@@ -3,6 +3,7 @@ use crate::{api, cache::Cache, cli::Options, geocoding, http::Http, location::Lo
 
 pub async fn load(args: &Options) -> Result<Report> {
     args.validate()?;
+    if let Some(path) = &args.input { return Report::read(path); }
     let now = SystemTime::now().duration_since(UNIX_EPOCH).map_err(|_| "system clock is before the Unix epoch")?.as_secs();
     let key = args.request_key();
     let cache = args.cache_dir.clone().map(Cache::new);
