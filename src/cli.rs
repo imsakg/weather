@@ -38,6 +38,9 @@ pub struct Options {
     /// Emit a versioned JSON report on stdout
     #[structopt(long, conflicts_with = "chart")]
     pub json: bool,
+    /// Export daily rows as CSV with explicit units
+    #[structopt(long, conflicts_with_all = &["json", "chart"])]
+    pub csv: bool,
     /// Opt-in local cache directory (stores location and weather)
     #[structopt(long, parse(from_os_str))]
     pub cache_dir: Option<std::path::PathBuf>,

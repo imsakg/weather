@@ -15,6 +15,7 @@ async fn run(mut args: Options) -> Result<()> {
     let data = &report.data;
     let units = report.units;
     if args.json { println!("{}", report.json()?); return Ok(()); }
+    if args.csv { print!("{}", weather::export::daily_csv(&report)?); return Ok(()); }
     if report.kind == weather::report::ReportKind::History { print!("{}", display::history(&location, &data, units)?); }
     else {
         print!("{}", display::current(&location, &data, units));
