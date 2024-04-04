@@ -70,7 +70,7 @@ pub fn rainfall(days: &[Day], units: Units, width: usize) -> String {
             None => "missing".into(),
             Some(value) => "#".repeat(if max > 0.0 { (value / max * width as f64).round() as usize } else { 0 }),
         };
-        out.push_str(&format!("{} {:>6} {} | {}\n", day.date, number(rain), units.precipitation_label(), bar));
+        out.push_str(&format!("{} {:>6} {} | {}\n", crate::text::terminal(&day.date), number(rain), units.precipitation_label(), bar));
     }
     out
 }

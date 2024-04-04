@@ -4,7 +4,7 @@ use weather::{cli::Options, display, Result};
 #[tokio::main]
 async fn main() {
     if let Err(error) = run(Options::from_args()).await {
-        eprintln!("weather: {error}");
+        eprintln!("weather: {}", weather::text::terminal(&error));
         std::process::exit(1);
     }
 }

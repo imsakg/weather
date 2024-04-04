@@ -17,3 +17,4 @@ pub mod app;
 pub mod config;
 pub mod summary;
 pub mod export;
+pub mod text;

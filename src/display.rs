@@ -4,9 +4,9 @@ pub fn number(value: Option<f64>) -> String {
     value.filter(|n| n.is_finite()).map_or_else(|| "—".into(), |n| format!("{n:.1}"))
 }
 pub fn current(location: &Location, data: &WeatherData, units: Units) -> String {
-    let mut out = format!("{}{} · {}\n", location.name, location.country.as_ref().map_or(String::new(), |c| format!(", {c}")), data.timezone);
+    let mut out = format!("{}{} · {}\n", crate::text::terminal(&location.name), location.country.as_ref().map_or(String::new(), |c| format!(", {}", crate::text::terminal(c))), crate::text::terminal(&data.timezone));
     if let Some(now) = &data.current {
-        out.push_str(&format!("{} · {}\nTemperature: {} {} · feels like {} {}\nHumidity: {} % · wind: {} {}\n", now.time, condition(now.weather_code),
+        out.push_str(&format!("{} · {}\nTemperature: {} {} · feels like {} {}\nHumidity: {} % · wind: {} {}\n", crate::text::terminal(&now.time), condition(now.weather_code),
             number(now.temperature_2m), units.temperature_label(), number(now.apparent_temperature), units.temperature_label(),
             number(now.relative_humidity_2m), number(now.wind_speed_10m), units.wind_label()));
     } else { out.push_str("Current observations unavailable\n"); }
@@ -46,7 +46,7 @@ mod daily_display_tests {
 pub fn daily(days: &[crate::model::Day], units: Units) -> String {
     let mut out = format!("\n{:<12} {:>9} {:>9} {:>10}  Conditions\n", "Date", format!("High {}", units.temperature_label()), format!("Low {}", units.temperature_label()), format!("Rain {}", units.precipitation_label()));
     for day in days {
-        out.push_str(&format!("{:<12} {:>9} {:>9} {:>10}  {}\n", day.date, number(day.high), number(day.low), number(day.rain), condition(day.code)));
+        out.push_str(&format!("{:<12} {:>9} {:>9} {:>10}  {}\n", crate::text::terminal(&day.date), number(day.high), number(day.low), number(day.rain), condition(day.code)));
     }
     out
 }
@@ -69,15 +69,15 @@ mod history_display_tests {
 pub fn history(location: &Location, data: &WeatherData, units: Units) -> crate::Result<String> {
     let days = data.daily.as_ref().ok_or("archive response is missing daily data")?.rows()?;
     if days.is_empty() { return Err("archive returned no days".into()); }
-    Ok(format!("Historical weather · {} · {}\nOpen-Meteo reanalysis estimates; recent dates may be incomplete.\n{}", location.name, data.timezone, daily(&days, units)))
+    Ok(format!("Historical weather · {} · {}\nOpen-Meteo reanalysis estimates; recent dates may be incomplete.\n{}", crate::text::terminal(&location.name), crate::text::terminal(&data.timezone), daily(&days, units)))
 }
 
 pub fn hourly(data: &WeatherData, units: Units, limit: u8) -> crate::Result<String> {
     let rows = data.hourly.as_ref().ok_or("provider returned no hourly forecast")?.rows()?;
     let now = data.current.as_ref().map(|c| c.time.as_str()).unwrap_or("");
-    let mut out = format!("\nUpcoming hours · {}\n{:<18} {:>10} {:>12}\n", data.timezone, "Local time", units.temperature_label(), "Rain chance");
+    let mut out = format!("\nUpcoming hours · {}\n{:<18} {:>10} {:>12}\n", crate::text::terminal(&data.timezone), "Local time", units.temperature_label(), "Rain chance");
     for hour in rows.iter().filter(|r| r.time.as_str() >= now).take(usize::from(limit.min(48))) {
-        out.push_str(&format!("{:<18} {:>10} {:>10} %\n", hour.time, number(hour.temperature), number(hour.rain_probability)));
+        out.push_str(&format!("{:<18} {:>10} {:>10} %\n", crate::text::terminal(&hour.time), number(hour.temperature), number(hour.rain_probability)));
     }
     Ok(out)
 }

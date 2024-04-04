@@ -1,6 +1,8 @@
 use crate::{display::number, model::condition, report::Report, Result};
 
 pub fn csv_cell(value: &str) -> String {
+    let cleaned: String = value.chars().filter(|c| matches!(c, '\n' | '\r') || (!c.is_control() && !matches!(c, '\u{202a}'..='\u{202e}' | '\u{2066}'..='\u{2069}'))).collect();
+    let value = cleaned.as_str();
     let formula = value.trim_start().starts_with(['=', '+', '-', '@']);
     let value = if formula { format!("'{value}") } else { value.to_string() };
     if value.contains([',', '"', '\n', '\r']) { format!("\"{}\"", value.replace('"', "\"\"")) } else { value }
