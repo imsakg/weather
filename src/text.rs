@@ -1,7 +1,13 @@
 /// Keep untrusted provider/file text from controlling the terminal.
 /// JSON is serialized separately and retains the original escaped values.
 pub fn terminal(value: &str) -> String {
-    value.chars().filter(|c| !c.is_control() && !matches!(c, '\u{202a}'..='\u{202e}' | '\u{2066}'..='\u{2069}')).take(200).collect()
+    value
+        .chars()
+        .filter(|c| {
+            !c.is_control() && !matches!(c, '\u{202a}'..='\u{202e}' | '\u{2066}'..='\u{2069}')
+        })
+        .take(200)
+        .collect()
 }
 
 #[cfg(test)]

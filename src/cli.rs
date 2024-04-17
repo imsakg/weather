@@ -1,8 +1,11 @@
-use structopt::StructOpt;
 use crate::{units::Units, Result};
+use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
-#[structopt(name = "weather", about = "Current weather and forecasts from Open-Meteo (no API key)")]
+#[structopt(
+    name = "weather",
+    about = "Current weather and forecasts from Open-Meteo (no API key)"
+)]
 pub struct Options {
     /// City name; quote names containing spaces
     pub city: Option<String>,
@@ -15,10 +18,22 @@ pub struct Options {
     #[structopt(long, default_value = "metric")]
     pub units: Units,
     /// Latitude for an exact location (no geocoding)
-    #[structopt(long, alias = "lat", requires = "longitude", conflicts_with = "city", allow_hyphen_values = true)]
+    #[structopt(
+        long,
+        alias = "lat",
+        requires = "longitude",
+        conflicts_with = "city",
+        allow_hyphen_values = true
+    )]
     pub latitude: Option<f64>,
     /// Longitude for an exact location
-    #[structopt(long, alias = "lon", requires = "latitude", conflicts_with = "city", allow_hyphen_values = true)]
+    #[structopt(
+        long,
+        alias = "lon",
+        requires = "latitude",
+        conflicts_with = "city",
+        allow_hyphen_values = true
+    )]
     pub longitude: Option<f64>,
     /// Opt in to approximate public-IP location via ipapi.co
     #[structopt(long, conflicts_with_all = &["city", "latitude", "longitude"])]
@@ -61,8 +76,12 @@ pub struct Options {
     pub input: Option<std::path::PathBuf>,
 }
 fn parse_days(value: &str) -> Result<u8> {
-    let days = value.parse::<u8>().map_err(|_| "days must be an integer from 1 to 16")?;
-    if !(1..=16).contains(&days) { return Err("days must be between 1 and 16".into()); }
+    let days = value
+        .parse::<u8>()
+        .map_err(|_| "days must be an integer from 1 to 16")?;
+    if !(1..=16).contains(&days) {
+        return Err("days must be between 1 and 16".into());
+    }
     Ok(days)
 }
 impl Options {
@@ -75,8 +94,11 @@ impl Options {
     }
     pub fn history_range(&self) -> Result<Option<crate::history::HistoryRange>> {
         match (&self.start, &self.end) {
-            (Some(start),Some(end)) => crate::history::HistoryRange::new(start, end, chrono::Utc::now().date_naive()).map(Some),
-            (None,None) => Ok(None),
+            (Some(start), Some(end)) => {
+                crate::history::HistoryRange::new(start, end, chrono::Utc::now().date_naive())
+                    .map(Some)
+            }
+            (None, None) => Ok(None),
             _ => Err("provide both --start and --end".into()),
         }
     }
@@ -85,15 +107,34 @@ impl Options {
             "latitude":self.latitude,"longitude":self.longitude,"locate":self.locate,"units":self.units,"days":self.days,"start":self.start,"end":self.end}).to_string()
     }
     pub fn validate(&self) -> Result<()> {
-        if self.cache_ttl > 86400 { return Err("cache TTL must not exceed 86400 seconds".into()); }
-        if self.input.is_some() { return Ok(()); }
+        if self.cache_ttl > 86400 {
+            return Err("cache TTL must not exceed 86400 seconds".into());
+        }
+        if self.input.is_some() {
+            return Ok(());
+        }
         self.history_range()?;
-        if self.start.is_some() && self.hourly > 0 { return Err("hourly display is not available for archive requests".into()); }
-        if self.coordinates()?.is_some() || self.locate { return Ok(()); }
-        let city = self.city.as_deref().ok_or("provide a city; see weather --help")?;
+        if self.start.is_some() && self.hourly > 0 {
+            return Err("hourly display is not available for archive requests".into());
+        }
+        if self.coordinates()?.is_some() || self.locate {
+            return Ok(());
+        }
+        let city = self
+            .city
+            .as_deref()
+            .ok_or("provide a city; see weather --help")?;
         crate::geocoding::search_url(city, self.country_code.as_deref())?;
         Ok(())
     }
+}
+
+fn parse_hours(value: &str) -> Result<u8> {
+    value
+        .parse::<u8>()
+        .ok()
+        .filter(|n| *n <= 48)
+        .ok_or_else(|| "hourly must be an integer from 0 to 48".into())
 }
 
 #[cfg(test)]
@@ -102,7 +143,10 @@ mod tests {
     use structopt::StructOpt;
     #[test]
     fn accepts_legacy_positionals_and_explicit_unit_flags() {
-        let args = Options::from_iter_safe(["weather", "London", "GB", "--days", "3", "--units", "imperial"]).unwrap();
+        let args = Options::from_iter_safe([
+            "weather", "London", "GB", "--days", "3", "--units", "imperial",
+        ])
+        .unwrap();
         assert_eq!(args.city.as_deref(), Some("London"));
         assert_eq!(args.days, 3);
         assert_eq!(args.units, Units::Imperial);
@@ -111,7 +155,10 @@ mod tests {
     #[test]
     fn invalid_ranges_and_missing_location_fail_before_network() {
         assert!(Options::from_iter_safe(["weather", "London", "--days", "17"]).is_err());
-        assert!(Options::from_iter_safe(["weather"]).unwrap().validate().is_err());
+        assert!(Options::from_iter_safe(["weather"])
+            .unwrap()
+            .validate()
+            .is_err());
     }
 }
 
@@ -120,21 +167,28 @@ mod coordinate_tests {
     use super::*;
     #[test]
     fn signed_coordinates_work_without_geocoding() {
-        let args = Options::from_iter_safe(["weather", "--latitude", "-33.86", "--longitude", "151.2"]).unwrap();
+        let args =
+            Options::from_iter_safe(["weather", "--latitude", "-33.86", "--longitude", "151.2"])
+                .unwrap();
         assert!(args.validate().is_ok());
         assert_eq!(args.coordinates().unwrap().unwrap().latitude(), -33.86);
     }
     #[test]
     fn incomplete_or_conflicting_location_is_rejected() {
         assert!(Options::from_iter_safe(["weather", "--latitude", "2"]).is_err());
-        assert!(Options::from_iter_safe(["weather", "London", "--latitude", "2", "--longitude", "3"]).is_err());
-        let args = Options::from_iter_safe(["weather", "--latitude", "200", "--longitude", "0"]).unwrap();
+        assert!(Options::from_iter_safe([
+            "weather",
+            "London",
+            "--latitude",
+            "2",
+            "--longitude",
+            "3"
+        ])
+        .is_err());
+        let args =
+            Options::from_iter_safe(["weather", "--latitude", "200", "--longitude", "0"]).unwrap();
         assert!(args.validate().is_err());
     }
-}
-
-fn parse_hours(value: &str) -> Result<u8> {
-    value.parse::<u8>().ok().filter(|n| *n <= 48).ok_or_else(|| "hourly must be an integer from 0 to 48".into())
 }
 
 #[cfg(test)]
@@ -143,7 +197,15 @@ mod cache_cli_tests {
     #[test]
     fn offline_requires_an_explicit_cache_and_cannot_refresh() {
         assert!(Options::from_iter_safe(["weather", "London", "--offline"]).is_err());
-        assert!(Options::from_iter_safe(["weather", "London", "--cache-dir", "cache", "--offline", "--refresh"]).is_err());
+        assert!(Options::from_iter_safe([
+            "weather",
+            "London",
+            "--cache-dir",
+            "cache",
+            "--offline",
+            "--refresh"
+        ])
+        .is_err());
     }
     #[test]
     fn request_keys_separate_units_and_forecast_lengths() {

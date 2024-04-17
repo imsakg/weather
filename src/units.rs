@@ -9,17 +9,51 @@ pub enum Units {
     Imperial,
 }
 impl Units {
-    pub fn temperature_label(self) -> &'static str { match self { Self::Metric => "°C", Self::Imperial => "°F" } }
-    pub fn temperature_parameter(self) -> &'static str { match self { Self::Metric => "celsius", Self::Imperial => "fahrenheit" } }
-    pub fn wind_parameter(self) -> &'static str { match self { Self::Metric => "kmh", Self::Imperial => "mph" } }
-    pub fn wind_label(self) -> &'static str { match self { Self::Metric => "km/h", Self::Imperial => "mph" } }
-    pub fn precipitation_parameter(self) -> &'static str { match self { Self::Metric => "mm", Self::Imperial => "inch" } }
-    pub fn precipitation_label(self) -> &'static str { match self { Self::Metric => "mm", Self::Imperial => "in" } }
+    pub fn temperature_label(self) -> &'static str {
+        match self {
+            Self::Metric => "°C",
+            Self::Imperial => "°F",
+        }
+    }
+    pub fn temperature_parameter(self) -> &'static str {
+        match self {
+            Self::Metric => "celsius",
+            Self::Imperial => "fahrenheit",
+        }
+    }
+    pub fn wind_parameter(self) -> &'static str {
+        match self {
+            Self::Metric => "kmh",
+            Self::Imperial => "mph",
+        }
+    }
+    pub fn wind_label(self) -> &'static str {
+        match self {
+            Self::Metric => "km/h",
+            Self::Imperial => "mph",
+        }
+    }
+    pub fn precipitation_parameter(self) -> &'static str {
+        match self {
+            Self::Metric => "mm",
+            Self::Imperial => "inch",
+        }
+    }
+    pub fn precipitation_label(self) -> &'static str {
+        match self {
+            Self::Metric => "mm",
+            Self::Imperial => "in",
+        }
+    }
 }
 impl FromStr for Units {
     type Err = String;
     fn from_str(value: &str) -> Result<Self, Self::Err> {
-        match value { "metric" => Ok(Self::Metric), "imperial" => Ok(Self::Imperial), _ => Err("units must be metric or imperial".into()) }
+        match value {
+            "metric" => Ok(Self::Metric),
+            "imperial" => Ok(Self::Imperial),
+            _ => Err("units must be metric or imperial".into()),
+        }
     }
 }
 

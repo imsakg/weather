@@ -9,24 +9,46 @@ async fn main() {
     }
 }
 async fn run(mut args: Options) -> Result<()> {
-    if let Some(path) = &args.config { weather::config::SavedLocation::read(path)?.apply(&mut args)?; }
+    if let Some(path) = &args.config {
+        weather::config::SavedLocation::read(path)?.apply(&mut args)?;
+    }
     let report = weather::app::load(&args).await?;
     let location = &report.location;
     let data = &report.data;
     let units = report.units;
-    if args.json { println!("{}", report.json()?); return Ok(()); }
-    if args.csv { print!("{}", weather::export::daily_csv(&report)?); return Ok(()); }
-    if report.kind == weather::report::ReportKind::History { print!("{}", display::history(&location, &data, units)?); }
-    else {
-        print!("{}", display::current(&location, &data, units));
-        if let Some(daily) = &data.daily { print!("{}", display::daily(&daily.rows()?, units)); }
+    if args.json {
+        println!("{}", report.json()?);
+        return Ok(());
     }
-    if let Some(daily) = &data.daily { print!("{}", weather::summary::summarize(&daily.rows()?).render(units)); }
-    if args.hourly > 0 { print!("{}", display::hourly(&data, units, args.hourly)?); }
+    if args.csv {
+        print!("{}", weather::export::daily_csv(&report)?);
+        return Ok(());
+    }
+    if report.kind == weather::report::ReportKind::History {
+        print!("{}", display::history(location, data, units)?);
+    } else {
+        print!("{}", display::current(location, data, units));
+        if let Some(daily) = &data.daily {
+            print!("{}", display::daily(&daily.rows()?, units));
+        }
+    }
+    if let Some(daily) = &data.daily {
+        print!(
+            "{}",
+            weather::summary::summarize(&daily.rows()?).render(units)
+        );
+    }
+    if args.hourly > 0 {
+        print!("{}", display::hourly(data, units, args.hourly)?);
+    }
     if args.chart {
         if let Some(daily) = &data.daily {
             let days = daily.rows()?;
-            print!("{}{}", weather::chart::temperature(&days, units), weather::chart::rainfall(&days, units, 32));
+            print!(
+                "{}{}",
+                weather::chart::temperature(&days, units),
+                weather::chart::rainfall(&days, units, 32)
+            );
         }
     }
     Ok(())
