@@ -132,7 +132,8 @@ Failures exit nonzero. Invalid arguments and missing locations fail before any
 network request. HTTP calls have bounded response sizes, connection/request
 timeouts, and explicit status checks; redirects are not followed.
 
-See [development scope and history provenance](docs/DEVELOPMENT.md). The added
+See [architecture](docs/ARCHITECTURE.md), [API/data contracts](docs/API.md), and
+[development scope and history provenance](docs/DEVELOPMENT.md). The added
 commit timestamps are a reconstructed sequence requested by the repository
 owner, not a claim that this implementation was authored in 2023–2024. The
 original root commit is unchanged.
