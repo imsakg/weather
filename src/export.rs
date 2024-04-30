@@ -32,6 +32,7 @@ fn number_some(value: f64) -> String {
     number(Some(value))
 }
 pub fn daily_csv(report: &Report) -> Result<String> {
+    report.validate()?;
     let days = report
         .data
         .daily

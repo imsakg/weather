@@ -38,10 +38,7 @@ pub async fn forecast(
     let data: WeatherData = http
         .get_json(forecast_url(coordinates, units, days)?)
         .await?;
-    data.daily
-        .as_ref()
-        .ok_or("provider returned no daily forecast")?
-        .rows()?;
+    data.forecast_coverage(days)?;
     Ok(data)
 }
 
@@ -68,10 +65,7 @@ pub async fn archive(
     let data: WeatherData = http
         .get_json(archive_url(coordinates, units, range)?)
         .await?;
-    data.daily
-        .as_ref()
-        .ok_or("provider returned no archive data")?
-        .rows()?;
+    data.history_coverage(range)?;
     Ok(data)
 }
 

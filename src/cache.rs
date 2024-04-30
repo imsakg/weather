@@ -43,9 +43,11 @@ impl Cache {
         if entry.version != 1 || entry.report.schema_version != 1 || entry.key != key {
             return Err("cache schema or request key mismatch".into());
         }
+        entry.report.validate()?;
         Ok(Some(entry))
     }
     pub fn store(&self, key: &str, fetched_at: u64, report: &Report) -> Result<()> {
+        report.validate()?;
         let entry = Cached {
             version: 1,
             key: key.into(),
@@ -110,7 +112,9 @@ mod tests {
             crate::location::Location::at(crate::location::Coordinates::new(1.0, 2.0).unwrap()),
             crate::units::Units::Metric,
             crate::report::ReportKind::Forecast,
-            serde_json::from_str(r#"{"timezone":"UTC"}"#).unwrap(),
+            serde_json::from_str::<Report>(include_str!("../tests/fixtures/forecast.json"))
+                .unwrap()
+                .data,
         )
     }
     #[test]
@@ -141,7 +145,9 @@ mod freshness_tests {
             crate::location::Location::at(crate::location::Coordinates::new(1.0, 2.0).unwrap()),
             crate::units::Units::Metric,
             crate::report::ReportKind::Forecast,
-            serde_json::from_str(r#"{"timezone":"UTC"}"#).unwrap(),
+            serde_json::from_str::<Report>(include_str!("../tests/fixtures/forecast.json"))
+                .unwrap()
+                .data,
         );
         cache.store("a", 1000, &report).unwrap();
     }

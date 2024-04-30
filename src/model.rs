@@ -66,6 +66,26 @@ impl Daily {
         {
             return Err("provider returned mismatched daily arrays".into());
         }
+        if len == 0 || len > 366 {
+            return Err("daily data must contain 1..366 days".into());
+        }
+        let mut previous: Option<chrono::NaiveDate> = None;
+        for i in 0..len {
+            let date = calendar_date(&self.time[i])?;
+            if previous.is_some_and(|p| (date - p).num_days() != 1) {
+                return Err("daily dates must be consecutive and ascending".into());
+            }
+            previous = Some(date);
+            measurement(self.temperature_2m_max[i], None, None, "daily high")?;
+            measurement(self.temperature_2m_min[i], None, None, "daily low")?;
+            measurement(self.precipitation_sum[i], Some(0.0), None, "precipitation")?;
+            if self.temperature_2m_max[i]
+                .zip(self.temperature_2m_min[i])
+                .is_some_and(|(high, low)| high < low)
+            {
+                return Err("daily high cannot be below daily low".into());
+            }
+        }
         Ok((0..len)
             .map(|i| Day {
                 date: self.time[i].clone(),
@@ -97,6 +117,25 @@ impl Hourly {
         {
             return Err("provider returned mismatched hourly arrays".into());
         }
+        if self.time.len() > 16 * 25 {
+            return Err("hourly data exceeds the supported forecast horizon".into());
+        }
+        let mut previous: Option<chrono::NaiveDateTime> = None;
+        for i in 0..self.time.len() {
+            let stamp = timestamp(&self.time[i])?;
+            // Equal local times can occur when daylight-saving time ends.
+            if previous.is_some_and(|p| stamp < p) {
+                return Err("hourly timestamps must be ascending".into());
+            }
+            previous = Some(stamp);
+            measurement(self.temperature_2m[i], None, None, "hourly temperature")?;
+            measurement(
+                self.precipitation_probability[i],
+                Some(0.0),
+                Some(100.0),
+                "rain probability",
+            )?;
+        }
         Ok((0..self.time.len())
             .map(|i| Hour {
                 time: self.time[i].clone(),
@@ -104,6 +143,94 @@ impl Hourly {
                 rain_probability: self.precipitation_probability[i],
             })
             .collect())
+    }
+}
+
+fn measurement(
+    value: Option<f64>,
+    min: Option<f64>,
+    max: Option<f64>,
+    name: &str,
+) -> crate::Result<()> {
+    if let Some(value) = value {
+        if !value.is_finite() || min.is_some_and(|n| value < n) || max.is_some_and(|n| value > n) {
+            return Err(format!("invalid {name} measurement"));
+        }
+    }
+    Ok(())
+}
+pub(crate) fn calendar_date(value: &str) -> crate::Result<chrono::NaiveDate> {
+    let date = chrono::NaiveDate::parse_from_str(value, "%Y-%m-%d")
+        .map_err(|_| "invalid daily calendar date")?;
+    if date.to_string() != value {
+        return Err("daily dates must use canonical YYYY-MM-DD".into());
+    }
+    Ok(date)
+}
+pub(crate) fn timestamp(value: &str) -> crate::Result<chrono::NaiveDateTime> {
+    let stamp = chrono::NaiveDateTime::parse_from_str(value, "%Y-%m-%dT%H:%M")
+        .map_err(|_| "invalid local weather timestamp")?;
+    if stamp.format("%Y-%m-%dT%H:%M").to_string() != value {
+        return Err("timestamps must use canonical YYYY-MM-DDTHH:MM".into());
+    }
+    Ok(stamp)
+}
+impl WeatherData {
+    pub fn validate(&self) -> crate::Result<()> {
+        if self.timezone.is_empty()
+            || self.timezone.len() > 100
+            || !self
+                .timezone
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || b"/_-+".contains(&b))
+        {
+            return Err("invalid provider timezone".into());
+        }
+        if let Some(now) = &self.current {
+            timestamp(&now.time)?;
+            measurement(now.temperature_2m, None, None, "temperature")?;
+            measurement(now.apparent_temperature, None, None, "apparent temperature")?;
+            measurement(now.relative_humidity_2m, Some(0.0), Some(100.0), "humidity")?;
+            measurement(now.wind_speed_10m, Some(0.0), None, "wind speed")?;
+        }
+        if let Some(daily) = &self.daily {
+            daily.rows()?;
+        }
+        if let Some(hourly) = &self.hourly {
+            hourly.rows()?;
+        }
+        Ok(())
+    }
+    pub fn forecast_coverage(&self, days: u8) -> crate::Result<()> {
+        self.validate()?;
+        let rows = self
+            .daily
+            .as_ref()
+            .ok_or("provider returned no daily forecast")?
+            .rows()?;
+        if !(1..=16).contains(&days) || rows.len() != usize::from(days) {
+            return Err("forecast does not cover the requested number of days".into());
+        }
+        if let Some(now) = &self.current {
+            if calendar_date(&rows[0].date)? != timestamp(&now.time)?.date() {
+                return Err("forecast period does not begin on the current local date".into());
+            }
+        }
+        Ok(())
+    }
+    pub fn history_coverage(&self, range: crate::history::HistoryRange) -> crate::Result<()> {
+        self.validate()?;
+        let rows = self
+            .daily
+            .as_ref()
+            .ok_or("provider returned no archive data")?
+            .rows()?;
+        if calendar_date(&rows[0].date)? != range.start
+            || calendar_date(&rows[rows.len() - 1].date)? != range.end
+        {
+            return Err("archive does not cover the requested date range".into());
+        }
+        Ok(())
     }
 }
 

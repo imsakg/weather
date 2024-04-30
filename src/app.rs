@@ -23,7 +23,15 @@ pub async fn load(args: &Options) -> Result<Report> {
     let cache = args.cache_dir.clone().map(Cache::new);
     if !args.refresh {
         if let Some(cache) = &cache {
-            match cache.lookup(&key, now, args.cache_ttl, args.offline) {
+            let lookup = cache
+                .lookup(&key, now, args.cache_ttl, args.offline)
+                .and_then(|hit| {
+                    if let Some(hit) = &hit {
+                        hit.report.validate_for(args)?;
+                    }
+                    Ok(hit)
+                });
+            match lookup {
                 Ok(Some(hit)) => {
                     eprintln!(
                         "{}cached weather · {} seconds old",
@@ -34,7 +42,9 @@ pub async fn load(args: &Options) -> Result<Report> {
                 }
                 Ok(None) => {}
                 Err(error) if args.offline => return Err(error),
-                Err(error) => eprintln!("Ignoring unusable cache: {error}"),
+                Err(error) => {
+                    eprintln!("Ignoring unusable cache: {}", crate::text::terminal(&error))
+                }
             }
         }
     }
@@ -67,9 +77,10 @@ pub async fn load(args: &Options) -> Result<Report> {
         )
     };
     let report = Report::new(location, args.units, kind, data);
+    report.validate_for(args)?;
     if let Some(cache) = cache {
         if let Err(error) = cache.store(&key, now, &report) {
-            eprintln!("Could not save cache: {error}");
+            eprintln!("Could not save cache: {}", crate::text::terminal(&error));
         }
     }
     Ok(report)

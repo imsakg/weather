@@ -77,7 +77,13 @@ pub fn hourly(data: &WeatherData, units: Units, limit: u8) -> crate::Result<Stri
         .as_ref()
         .ok_or("provider returned no hourly forecast")?
         .rows()?;
-    let now = data.current.as_ref().map(|c| c.time.as_str()).unwrap_or("");
+    let now = data
+        .current
+        .as_ref()
+        .ok_or("hourly display requires a current timestamp")?
+        .time
+        .as_str();
+    crate::model::timestamp(now)?;
     let mut out = format!(
         "\nUpcoming hours · {}\n{:<18} {:>10} {:>12}\n",
         crate::text::terminal(&data.timezone),

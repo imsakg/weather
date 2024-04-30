@@ -1,5 +1,11 @@
+use std::io::Write;
 use structopt::StructOpt;
-use weather::{cli::Options, display, Result};
+use weather::{
+    cli::Options,
+    display,
+    report::{Report, ReportKind},
+    Result,
+};
 
 #[tokio::main]
 async fn main() {
@@ -13,43 +19,45 @@ async fn run(mut args: Options) -> Result<()> {
         weather::config::SavedLocation::read(path)?.apply(&mut args)?;
     }
     let report = weather::app::load(&args).await?;
+    // Complete validation and rendering before emitting any report stdout.
+    let output = render(&args, &report)?;
+    std::io::stdout()
+        .lock()
+        .write_all(output.as_bytes())
+        .map_err(|e| format!("cannot write output: {e}"))
+}
+fn render(args: &Options, report: &Report) -> Result<String> {
+    report.validate()?;
+    if args.json {
+        return Ok(format!("{}\n", report.json()?));
+    }
+    if args.csv {
+        return weather::export::daily_csv(report);
+    }
     let location = &report.location;
     let data = &report.data;
     let units = report.units;
-    if args.json {
-        println!("{}", report.json()?);
-        return Ok(());
-    }
-    if args.csv {
-        print!("{}", weather::export::daily_csv(&report)?);
-        return Ok(());
-    }
-    if report.kind == weather::report::ReportKind::History {
-        print!("{}", display::history(location, data, units)?);
+    let days = data
+        .daily
+        .as_ref()
+        .ok_or("report has no daily data")?
+        .rows()?;
+    let mut output = if report.kind == ReportKind::History {
+        display::history(location, data, units)?
     } else {
-        print!("{}", display::current(location, data, units));
-        if let Some(daily) = &data.daily {
-            print!("{}", display::daily(&daily.rows()?, units));
-        }
-    }
-    if let Some(daily) = &data.daily {
-        print!(
-            "{}",
-            weather::summary::summarize(&daily.rows()?).render(units)
-        );
-    }
+        format!(
+            "{}{}",
+            display::current(location, data, units),
+            display::daily(&days, units)
+        )
+    };
+    output.push_str(&weather::summary::summarize(&days).render(units));
     if args.hourly > 0 {
-        print!("{}", display::hourly(data, units, args.hourly)?);
+        output.push_str(&display::hourly(data, units, args.hourly)?);
     }
     if args.chart {
-        if let Some(daily) = &data.daily {
-            let days = daily.rows()?;
-            print!(
-                "{}{}",
-                weather::chart::temperature(&days, units),
-                weather::chart::rainfall(&days, units, 32)
-            );
-        }
+        output.push_str(&weather::chart::temperature(&days, units));
+        output.push_str(&weather::chart::rainfall(&days, units, 32));
     }
-    Ok(())
+    Ok(output)
 }
